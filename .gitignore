@@ -12,3 +12,4 @@ wheels/
 ## My specific stuff
 .env
 /data
+*.ipynb
