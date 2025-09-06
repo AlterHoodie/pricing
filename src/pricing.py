@@ -86,47 +86,40 @@ def classify_pricing(follower_count: int, engagement_rate: float, content_type: 
             
             return {
                 "price_tier": tier,
-                "internal_cost_estimate": internal_cost,
-                "pitching_cost_estimate": pitching_cost,
+                "min_cost_estimate": internal_cost,  # Min price
+                "max_cost_estimate": pitching_cost,  # Max price
                 "follower_range": f"{f_min:,}-{f_max:,}" if f_max != float('inf') else f"{f_min:,}+",
                 "engagement_range": f"{e_min}-{e_max}%",
                 "content_type": content_type,
-                "margin_estimate": pitching_cost - internal_cost,
-                "margin_percentage": round(((pitching_cost - internal_cost) / pitching_cost) * 100, 1)
             }
     
     # Default case if no match found
     return {
         "price_tier": "Unclassified",
-        "internal_cost_estimate": 0,
-        "pitching_cost_estimate": 0,
+        "min_cost_estimate": 0,
+        "max_cost_estimate": 0,
         "follower_range": "Unknown",
         "engagement_range": "Unknown", 
         "content_type": content_type,
-        "margin_estimate": 0,
-        "margin_percentage": 0,
         "error": "No matching price tier found for given parameters"
     }
 
 
 async def get_pricing_from_instagram(page_url: str, page_name: str) -> dict:
     page_info = await get_instagram_page_info(page_url)
-    with open(f"./data/pages/{page_name}_page_info.json", "w") as f:
-        json.dump(page_info, f)
     if not page_info:
         logging.warning(f"No page info found for {page_url}")
         return {"error": "No page info found", "page_url": page_url}
+
     post_array, raw_post_array = await get_instagram_post_info(page_info["platform_specific_info"]["pk"], n_posts=27)
-    with open(f"./data/pages/{page_name}_post_array.json", "w") as f:
-        json.dump(post_array, f)
     follower_count = page_info["follower_count"]
 
     engagement_rate = sum([post["like_count"] + post["comment_count"] + post.get("view_count", 0) for post in post_array]) / follower_count
     logging.info(f"Engagement rate: {engagement_rate}")
 
     if not post_array:
-            logging.warning(f"No posts found for {page_url}")
-            return {"error": "No posts found", "page_url": page_url}
+        logging.warning(f"No posts found for {page_url}")
+        return {"error": "No posts found", "page_url": page_url}
 
     # Extract image URLs from posts
     image_urls = []
