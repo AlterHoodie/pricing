@@ -1,0 +1,12 @@
+[project]
+name = "wldd-pricing"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.3.2",
+    "openai>=1.106.1",
+    "pandas>=2.3.2",
+    "streamlit>=1.49.1",
+]
