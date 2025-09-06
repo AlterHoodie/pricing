@@ -1,7 +1,8 @@
 from src.services.rapidapi import get_instagram_page_info, get_instagram_post_info
-from src.agents import categorize
+from src.agents import analyze_asset
 from src.utils import create_collage_from_urls
 import logging
+import asyncio
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -133,25 +134,41 @@ async def get_pricing_from_instagram(page_url: str, page_name: str) -> dict:
     if not image_urls:
         logging.warning(f"No images found for {page_url}")
         return {"error": "No images found", "page_url": page_url}
-    # Max 3 collages * 9 images
-    collages = await asyncio.gather(*[
-            create_collage_from_urls(
+    
+    collages = []
+    if image_urls:
+        tasks = []
+        for i in range(0, min(len(image_urls), 27), 9):
+            tasks.append(create_collage_from_urls(
                 image_urls[i:i+9],
                 width=900,
                 height=900
-            ) for i in range(0, len(image_urls), 9)
-        ])
-    if not collages:
-        logging.warning(f"No collages created for {page_url}")
-        raise Exception("No collages created")
-    logging.info("Collages created")
+            ))
+        
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for result in results:
+            if isinstance(result, Exception):
+                logging.warning(f"Failed to create collage: {result}")
+            else:
+                collages.append(result)
+    
+    # Max 3 collages * 9 images
+    if collages:
+        try:
+            analysis = await analyze_asset(page_name,collages)
+            if "pricing" in analysis:
+                content_category = analysis["pricing"].get("category", "general")
+            else:
+                logging.warning(f"No pricing analysis found for {page_url}")
+                content_category = "general"
+        except Exception as e:
+            logging.warning(f"Classification failed: {e}")
 
     logging.info(f"Collages created: {len(collages)}")
 
-    classification = await categorize(collages)
-    logging.info(f"Classification: {classification}")
+    logging.info(f"Analysis: {analysis}")
 
-    return classify_pricing(follower_count, engagement_rate, classification["category"])
+    return classify_pricing(follower_count, engagement_rate, content_category) | {"brand_analysis": analysis}
 
 if __name__ == "__main__":
     import asyncio
@@ -161,11 +178,11 @@ if __name__ == "__main__":
     with open("./data/premium_sample_profiles.json", "r") as f:
         premium_sample_profiles = json.load(f)
     
-    for page in premium_sample_profiles:
+    for page in premium_sample_profiles[1:2]:
         print(page["profile_link"], page["Username"])
         pricing = asyncio.run(get_pricing_from_instagram(page["profile_link"], page["Username"]))
         page["pricing"] = pricing
         print(pricing)
         print("-"*100)
-    with open("./data/premium_sample_profiles_pricing.json", "w") as f:
+    with open("./data/test.json", "w") as f:
         json.dump(premium_sample_profiles, f)
