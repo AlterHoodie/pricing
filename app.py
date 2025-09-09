@@ -356,12 +356,8 @@ def main():
             st.markdown("---")
             
             # Pricing section
-            st.markdown("### 💰 Pricing Estimates")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Minimum Price", f"₹{pricing['min_cost_estimate']:,}")
-            with col2:
-                st.metric("Maximum Price", f"₹{pricing['max_cost_estimate']:,}")
+            st.markdown("### 💰 Max Estimated Price")
+            st.metric("", f"₹{pricing['max_cost_estimate']:,}")
             
             # Language Analysis
             if brand_analysis:
